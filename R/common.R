@@ -21,6 +21,18 @@ read_pairs = function(f) {
     pairs
 }
 
+## Events table from .rds or delimited text; needs `pair` and `ev.id`.
+## ev.id is read as character, so it matches whatever type the graphs use.
+read_event_list = function(f) {
+    ev = if (grepl('\\.rds$', f, ignore.case = TRUE)) readRDS(f) else data.table::fread(f, colClasses = list(character = 'ev.id'))
+    ev = data.table::as.data.table(ev)
+    miss = setdiff(c('pair', 'ev.id'), names(ev))
+    if (length(miss)) stop('events table lacks column(s): ', paste(miss, collapse = ', '))
+    ev[, ev.id := as.character(ev.id)]
+    if (anyDuplicated(ev[, .(pair, ev.id)])) stop('events table has duplicated (pair, ev.id) rows')
+    ev
+}
+
 ## Run files, all under run_dir.
 run_file = function(name) file.path(run_dir, name)
 

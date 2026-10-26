@@ -19,9 +19,14 @@ run_tag = 'local_swap_v1'
 ## Events
 ## -----------------------------------------------------------------------------
 
-## Simple one-junction event types are skipped.
+## Optional: run only these events. Table (.rds or tab-separated text) with
+## columns `pair` and `ev.id` (the graph's own event id, $meta$events$ev.id);
+## other columns are carried through as annotations (see README). NULL = all events.
+events_file = NULL
+## Simple one-junction event types are skipped (not applied to events_file events).
 exclude_types = c('dup', 'del', 'tra', 'inv')
-## Set to a small integer for a test run on that many random events.
+## Set to a small integer for a test run on that many random events
+## (taken from events_file events when it is set).
 event_subset_n = Inf
 ## Per-event seeds are derived from this and the event id.
 sample_seed = 1L

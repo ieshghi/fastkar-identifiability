@@ -6,6 +6,12 @@
 ## exclude_types. event_id = <pair>_event_<index>, index running over the kept
 ## events in pairs-table order; each event gets a seed derived from sample_seed
 ## and its id, so its result does not depend on how events are bundled.
+## With events_file set (config.R), only the listed (pair, ev.id) events are
+## kept. Ids and seeds are still assigned over all events, so each listed event
+## gets the same id, seed and result as in a full run; listed events of an
+## excluded type are kept, with id <pair>_event_x<event.iid>. Extra columns of
+## the events table go to <run_dir>/event_annotations.rds (and .tsv), which
+## 03_analyze.R joins onto its tables.
 ## Writes <run_dir>/events.rds (and events.tsv). An existing table is kept
 ## unless --rebuild is given: event ids and seeds must not change under a live run.
 suppressPackageStartupMessages({
@@ -43,10 +49,35 @@ all_events = rbindlist(evs, fill = TRUE)[, event.iid := .I][, cohort := cohort]
 message(nrow(all_events), ' events in ', uniqueN(all_events$pair), ' samples (',
         nrow(pairs) - uniqueN(all_events$pair), ' samples have none)')
 
-events = all_events[!(type %in% exclude_types)]
-message('Dropped ', nrow(all_events) - nrow(events), ' events of type ', paste(exclude_types, collapse = '/'))
-events[, identifiability_event_index := .I]
-events[, event_id := paste0(pair, '_event_', identifiability_event_index)]
+all_events[, excluded := type %in% exclude_types]
+all_events[!(excluded), identifiability_event_index := seq_len(.N)]
+all_events[, event_id := ifelse(excluded, paste0(pair, '_event_x', event.iid),
+                                paste0(pair, '_event_', identifiability_event_index))]
+annotations = NULL
+if (!exists('events_file')) events_file = NULL
+if (is.null(events_file)) {
+    events = all_events[!(excluded)]
+    message('Dropped ', nrow(all_events) - nrow(events), ' events of type ', paste(exclude_types, collapse = '/'))
+} else {
+    wanted = read_event_list(events_file)
+    key = function(p, e) paste(p, as.character(e), sep = '\r')
+    all_key = key(all_events$pair, all_events$ev.id)
+    dup = unique(all_events[duplicated(all_key) | duplicated(all_key, fromLast = TRUE)]$pair)
+    if (length(dup)) stop('ev.id is not unique within the graph(s) of ', paste(head(dup, 5), collapse = ', '))
+    hit = match(key(wanted$pair, wanted$ev.id), all_key)
+    if (anyNA(hit)) {
+        miss = wanted[is.na(hit)]
+        miss[, why := ifelse(pair %in% pairs$pair, 'ev.id not in the graph\'s $meta$events', 'pair not in the pairs table')]
+        print(head(miss[, .(pair, ev.id, why)], 20))
+        stop(nrow(miss), ' of ', nrow(wanted), ' events in ', events_file, ' were not found (first 20 above)')
+    }
+    events = all_events[hit]
+    message('Kept the ', nrow(events), ' events listed in ', events_file)
+    if (any(events$excluded)) message(sum(events$excluded), ' of them are of an excluded type (',
+                                      paste(unique(events[(excluded)]$type), collapse = '/'), '); running them anyway')
+    extra = setdiff(names(wanted), c('pair', 'ev.id'))
+    if (length(extra)) annotations = cbind(events[, .(event_id)], wanted[, ..extra])
+}
 events[, gg := pairs[match(events$pair, pairs$pair), complex]]
 if (is.finite(event_subset_n)) {
     set.seed(sample_seed)
@@ -59,5 +90,13 @@ events = events[, .(pair, event_id, cohort, type, ev.id, event.iid, identifiabil
 
 saveRDS(events, out)
 fwrite(events, run_file('events.tsv'), sep = '\t')
+ann_file = run_file('event_annotations.rds')
+unlink(c(ann_file, run_file('event_annotations.tsv')))
+if (!is.null(annotations)) {
+    annotations = annotations[event_id %in% events$event_id]
+    saveRDS(annotations, ann_file)
+    fwrite(annotations, run_file('event_annotations.tsv'), sep = '\t')
+    message('Wrote ', ann_file, ': columns ', paste(names(annotations)[-1], collapse = ', '))
+}
 message('Wrote ', out, ': ', nrow(events), ' events')
 print(events[, .N, keyby = type])

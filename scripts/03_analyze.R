@@ -6,7 +6,8 @@
 ##
 ## Outputs (in run_dir):
 ##   picks.rds          one row per event x assay x observation: truth rank, ties, MLE pick
-##   event_summary.rds  one row per event x assay (means over observations); also .tsv
+##   event_summary.rds  one row per event x assay (means over observations), plus any
+##                      event annotations from the events table; also .tsv
 ## Plots (in plot_dir):
 ##   identifiability_by_type.pdf   P(MLE = truth) per event type and assay
 ##   identifiability_figure.pdf    manuscript Fig. 4 layout (A simple types, B complex
@@ -51,6 +52,13 @@ picks[, assay := droplevels(assay)]
 summ = picks[, .(p_pick = mean(p_pick), median_rank = median(as.numeric(truth_rank)),
                  chance = 1 / n_cand[1], n_obs = .N),
              by = .(event_id, pair, cohort, type, assay, n_cand, unique_walk, event_size, target_width)]
+## Extra columns from the events table (01_events.R with events_file), e.g. a group label.
+if (file.exists(ann_file <- run_file('event_annotations.rds'))) {
+    ann = readRDS(ann_file)
+    ann = ann[, c('event_id', setdiff(names(ann), names(summ))), with = FALSE]
+    summ = merge(summ, ann, by = 'event_id', all.x = TRUE, sort = FALSE)
+    message('Joined event annotations: ', paste(names(ann)[-1], collapse = ', '))
+}
 saveRDS(picks, run_file('picks.rds'))
 saveRDS(summ, run_file('event_summary.rds'))
 fwrite(summ, run_file('event_summary.tsv'), sep = '\t')
@@ -145,10 +153,22 @@ p_frac = ggplot(frac, aes(frac, type, fill = assay_short)) +
                        plot.title = element_text(size = 13, face = 'bold', hjust = 0.5, color = 'grey10'))
 ## egg aligns the panel areas: A|C and B|D share rows, A/B and C/D share columns.
 ## widths/heights are panel sizes: type facets are 0.75 as wide as tall, C and D square
+## An event subset (events_file) may have only simple or only complex types:
+## then one row, type panel | C | D.
 n_facets = max(length(simple_types), length(complex_types))
-fig = egg::ggarrange(type_panel(simple_types, chance_label = TRUE), p_tum,
-                     type_panel(complex_types), p_frac,
-                     ncol = 2, widths = c(n_facets * 0.75, 1), heights = c(1, 1),
-                     labels = c('A', 'C', 'B', 'D'), label.args = list(gp = grid::gpar(fontface = 'bold', fontsize = 14)),
-                     draw = FALSE)
-save_plot(fig, 'identifiability_figure', width = 13.5, height = 7)
+label_args = list(gp = grid::gpar(fontface = 'bold', fontsize = 14))
+if (!length(simple_types) && !length(complex_types)) {
+    message('Skipping the figure layout: no events of the figure types')
+    quit(save = 'no')
+} else if (length(simple_types) && length(complex_types)) {
+    fig = egg::ggarrange(type_panel(simple_types, chance_label = TRUE), p_tum,
+                         type_panel(complex_types), p_frac,
+                         ncol = 2, widths = c(n_facets * 0.75, 1), heights = c(1, 1),
+                         labels = c('A', 'C', 'B', 'D'), label.args = label_args, draw = FALSE)
+    save_plot(fig, 'identifiability_figure', width = 13.5, height = 7)
+} else {
+    fig = egg::ggarrange(type_panel(c(simple_types, complex_types), chance_label = TRUE), p_tum, p_frac,
+                         ncol = 3, widths = c(n_facets * 0.75, 1, 1),
+                         labels = c('A', 'C', 'D'), label.args = label_args, draw = FALSE)
+    save_plot(fig, 'identifiability_figure', width = 8 + 2.2 * n_facets, height = 3.5)
+}
