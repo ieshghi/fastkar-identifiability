@@ -1,0 +1,1 @@
+command = bash <libdir>run.sh "${t batch_id}" "${t event_bundle}" "${t settings}" "${t mc_cores}"
