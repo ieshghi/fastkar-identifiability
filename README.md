@@ -134,8 +134,12 @@ resources/               CCLE per-type runtime/memory
 
 ## Reproducibility
 
-With the default settings and the pinned packages, this reproduces the manuscript's CCLE run
-(`ccle_v3_local_swap`) exactly: the same 2239 events, ids and seeds, and per-event results identical to
-the production checkpoints (checked on two events), and `03_analyze.R` on the production outputs gives
-the published numbers (mean P(MLE = truth): Hi-C 0.86, 10 Mb 0.73, 100 kb 0.35). Results depend on
+The pinned fastKar (`bd9941c`) weights each pixel's Hi-C NLL by its area (width_i * width_j / pix.size^2;
+the tiles are cut at node boundaries, so pixels differ in size). The manuscript's CCLE run
+(`ccle_v3_local_swap`) used fastKar `91f1ff3`, which scored every pixel equally. With the default settings
+this pipeline gives the same 2239 events, ids and seeds as that run, and per event the same candidates,
+edit distances, noisy observations and long-read results (checked on a production checkpoint); only the
+Hi-C NLLs, and so the Hi-C picks, can differ. `03_analyze.R` on the production outputs gives the
+published numbers (mean P(MLE = truth): Hi-C 0.86, 10 Mb 0.73, 100 kb 0.35). Install `ieshghi/fastKar@91f1ff3`
+instead to reproduce that run exactly. Results depend on
 `mc_cores` (each event's forked sampling walkers draw from L'Ecuyer streams split by core).
