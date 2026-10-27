@@ -134,9 +134,15 @@ resources/               CCLE per-type runtime/memory
 
 ## Reproducibility
 
-The pinned fastKar (`bd9941c`) weights each pixel's Hi-C NLL by its area (width_i * width_j / pix.size^2;
-the tiles are cut at node boundaries, so pixels differ in size). The manuscript's CCLE run
-(`ccle_v3_local_swap`) used fastKar `91f1ff3`, which scored every pixel equally. With the default settings
+The pinned fastKar (`1c5197b`) differs from the one used for the manuscript's CCLE run
+(`ccle_v3_local_swap`, fastKar `91f1ff3`) in two ways that change Hi-C NLLs:
+- each pixel's Hi-C NLL is weighted by its area (width_i * width_j / pix.size^2; the tiles are cut at node
+  boundaries, so pixels differ in size; since `bd9941c`), where `91f1ff3` scored every pixel equally;
+- the forward model keeps the full length of nodes that the event's target region only partly covers
+  (since `1c5197b`). Before, the uncovered part of such a node was dropped from the walk, so tiles on either
+  side of a gap in the target sat next to each other. Nearly every event has such a node at the edge of its
+  buffered footprint; about a fifth have a gap inside one node, where the effect is large. On a 42-event
+  sample, 12 events changed P(MLE = truth) by more than 0.05 (mean 0.79 -> 0.78). With the default settings
 this pipeline gives the same 2239 events, ids and seeds as that run, and per event the same candidates,
 edit distances, noisy observations and long-read results (checked on a production checkpoint); only the
 Hi-C NLLs, and so the Hi-C picks, can differ. `03_analyze.R` on the production outputs gives the
