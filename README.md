@@ -134,13 +134,17 @@ resources/               CCLE per-type runtime/memory
 
 ## Reproducibility
 
-The manuscript's CCLE run (`ccle_v4_local_fwdfix`) used fastKar `1c5197b`. The pinned fastKar (`d6198c7`)
+The manuscript's CCLE run (`ccle_v4_local_fwdfix`) used fastKar `1c5197b`. The pinned fastKar (`f3cfd9c`)
 takes chromosome lengths from each graph when it pads the footprint. `1c5197b` took them from the
 `DEFAULT_GENOME` / `DEFAULT_BSGENOME` environment variables, and on a machine with neither set the buffer
 (footprint + max(20%, 10 kb)) was cut at the footprint's right end (nearly every event, a median 15% of the
 target on HMF). The CCLE run had them set. JaBbA graphs round chromosome lengths up to the kb, so events whose
 target reaches a chromosome end (54 of 2239 on CCLE) get a target up to 1 kb wider than in that run; every
 other target is the same.
+It also scores Hi-C correctly on allelic graphs, where h1/h2 copies of a node share coordinates: candidate
+maps are summed over haplotypes onto the observed bins (`1c5197b` and `d6198c7` joined them on raw tile
+indices, which scrambled pixels on such graphs). Graphs without overlapping nodes, like the CCLE ones, score
+exactly as before.
 
 With the default settings this pipeline gives the same 2239 events, ids and seeds as the CCLE run, and per
 event the same candidates, edit distances, noisy observations and long-read results (checked on a production
