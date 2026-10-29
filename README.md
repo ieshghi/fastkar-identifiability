@@ -134,18 +134,18 @@ resources/               CCLE per-type runtime/memory
 
 ## Reproducibility
 
-The pinned fastKar (`1c5197b`) differs from the one used for the manuscript's CCLE run
-(`ccle_v3_local_swap`, fastKar `91f1ff3`) in two ways that change Hi-C NLLs:
-- each pixel's Hi-C NLL is weighted by its area (width_i * width_j / pix.size^2; the tiles are cut at node
-  boundaries, so pixels differ in size; since `bd9941c`), where `91f1ff3` scored every pixel equally;
-- the forward model keeps the full length of nodes that the event's target region only partly covers
-  (since `1c5197b`). Before, the uncovered part of such a node was dropped from the walk, so tiles on either
-  side of a gap in the target sat next to each other. Nearly every event has such a node at the edge of its
-  buffered footprint; about a fifth have a gap inside one node, where the effect is large. On a 42-event
-  sample, 12 events changed P(MLE = truth) by more than 0.05 (mean 0.79 -> 0.78). With the default settings
-this pipeline gives the same 2239 events, ids and seeds as that run, and per event the same candidates,
-edit distances, noisy observations and long-read results (checked on a production checkpoint); only the
-Hi-C NLLs, and so the Hi-C picks, can differ. `03_analyze.R` on the production outputs gives the
-published numbers (mean P(MLE = truth): Hi-C 0.86, 10 Mb 0.73, 100 kb 0.35). Install `ieshghi/fastKar@91f1ff3`
-instead to reproduce that run exactly. Results depend on
-`mc_cores` (each event's forked sampling walkers draw from L'Ecuyer streams split by core).
+The manuscript's CCLE run (`ccle_v4_local_fwdfix`) used fastKar `1c5197b`. The pinned fastKar (`d6198c7`)
+takes chromosome lengths from each graph when it pads the footprint. `1c5197b` took them from the
+`DEFAULT_GENOME` / `DEFAULT_BSGENOME` environment variables, and on a machine with neither set the buffer
+(footprint + max(20%, 10 kb)) was cut at the footprint's right end (nearly every event, a median 15% of the
+target on HMF). The CCLE run had them set. JaBbA graphs round chromosome lengths up to the kb, so events whose
+target reaches a chromosome end (54 of 2239 on CCLE) get a target up to 1 kb wider than in that run; every
+other target is the same.
+
+With the default settings this pipeline gives the same 2239 events, ids and seeds as the CCLE run, and per
+event the same candidates, edit distances, noisy observations and long-read results (checked on a production
+checkpoint). Mean P(MLE = truth) there: Hi-C 0.84, 10 Mb 0.73, 100 kb 0.35. Install `ieshghi/fastKar@1c5197b`
+(with `DEFAULT_BSGENOME` set to an hg19 chrom.sizes file) to reproduce it exactly. The earlier
+`ccle_v3_local_swap` run (fastKar `91f1ff3`) scored Hi-C pixels unweighted and dropped the parts of nodes the
+target only partly covers (fixed in `bd9941c` and `1c5197b`). Results depend on `mc_cores` (each event's
+forked sampling walkers draw from L'Ecuyer streams split by core).
