@@ -134,7 +134,7 @@ resources/               CCLE per-type runtime/memory
 
 ## Reproducibility
 
-The manuscript's CCLE run (`ccle_v4_local_fwdfix`) used fastKar `1c5197b`. The pinned fastKar (`f3cfd9c`)
+The manuscript's CCLE run (`ccle_v4_local_fwdfix`) used fastKar `1c5197b`. The pinned fastKar (`1b8e5ab`)
 takes chromosome lengths from each graph when it pads the footprint. `1c5197b` took them from the
 `DEFAULT_GENOME` / `DEFAULT_BSGENOME` environment variables, and on a machine with neither set the buffer
 (footprint + max(20%, 10 kb)) was cut at the footprint's right end (nearly every event, a median 15% of the
@@ -145,6 +145,10 @@ It also scores Hi-C correctly on allelic graphs, where h1/h2 copies of a node sh
 maps are summed over haplotypes onto the observed bins (`1c5197b` and `d6198c7` joined them on raw tile
 indices, which scrambled pixels on such graphs). Graphs without overlapping nodes, like the CCLE ones, score
 exactly as before.
+When h1 and h2 tiles are summed into one bin, the contacts between them now count twice on that bin's
+diagonal (as both orders), as contacts within one tile already did (`f3cfd9c` and earlier counted them
+once), so karyotypes that differ only in haplotype labels get identical Hi-C maps and tie instead of
+the truth losing or winning by chance. This also only affects graphs with overlapping nodes.
 
 With the default settings this pipeline gives the same 2239 events, ids and seeds as the CCLE run, and per
 event the same candidates, edit distances, noisy observations and long-read results (checked on a production
