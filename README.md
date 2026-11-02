@@ -99,13 +99,13 @@ The rest of the pipeline is unchanged (`smoke_test.R`, `02_submit.R`, `03_analyz
 | `events.rds/.tsv` | events analysed (one row per event; `event_id = <pair>_event_<n>`, per-event `seed`) |
 | `event_annotations.rds/.tsv` | extra columns of the events table, by `event_id` (only with `events_file`) |
 | `plan_*.rds`, `bundles/`, `settings.rds` | job plan, per-job event bundles, analysis settings |
-| `flow/fastkar_local_identifiability/<job>/events/<event_id>.rds` | per-event result: `picks`, `meta`, `edit`, `swaps`, `nll` (NLL matrices, truth = column 1) |
+| `flow/fastkar_local_identifiability/<job>/events/<event_id>.rds` | per-event result: `picks`, `meta`, `edit`, `swaps`, `hap` (haploid signatures), `nll` (NLL matrices, truth = column 1) |
 | `picks.rds` | one row per event x assay x observation (truth rank, ties, `p_pick`) |
-| `event_summary.rds/.tsv` | one row per event x assay: `p_pick` = P(MLE = truth), `chance`, `n_cand`, `unique_walk`, plus any event annotations |
+| `event_summary.rds/.tsv` | one row per event x assay: `p_pick` = P(MLE = truth), `chance` = 1 / `n_hap`, `n_cand`, `n_hap`, `unique_walk`, plus any event annotations |
 | `plots/identifiability_by_type.pdf` | P(MLE = truth) by event type and assay |
 | `plots/identifiability_figure.pdf` | manuscript Fig. 4 layout |
 
-Events whose footprint admits only one karyotype (`unique_walk`) count as P = 1 for every assay.
+Picks are scored on haploid solutions: after scoring, candidates that differ only in h1/h2 labels (allelic/fixed-phase graphs) are collapsed into one solution with their best NLL, so a label swap of the truth is not a miss (`n_hap` solutions out of `n_cand` candidates). Events whose footprint admits only one haploid karyotype (`unique_walk`) count as P = 1 for every assay.
 
 ## Cluster resources
 
@@ -134,7 +134,7 @@ resources/               CCLE per-type runtime/memory
 
 ## Reproducibility
 
-The manuscript's CCLE run (`ccle_v4_local_fwdfix`) used fastKar `1c5197b`. The pinned fastKar (`1b8e5ab`)
+The manuscript's CCLE run (`ccle_v4_local_fwdfix`) used fastKar `1c5197b`. The pinned fastKar (`e8a5a2c`)
 takes chromosome lengths from each graph when it pads the footprint. `1c5197b` took them from the
 `DEFAULT_GENOME` / `DEFAULT_BSGENOME` environment variables, and on a machine with neither set the buffer
 (footprint + max(20%, 10 kb)) was cut at the footprint's right end (nearly every event, a median 15% of the
@@ -149,6 +149,9 @@ When h1 and h2 tiles are summed into one bin, the contacts between them now coun
 diagonal (as both orders), as contacts within one tile already did (`f3cfd9c` and earlier counted them
 once), so karyotypes that differ only in haplotype labels get identical Hi-C maps and tie instead of
 the truth losing or winning by chance. This also only affects graphs with overlapping nodes.
+Such label-only candidates are then collapsed after scoring (`e8a5a2c`): candidates with the same haploid
+footprint signature count as one solution with their best NLL, so a label swap of the truth is not a miss on
+any assay (`n_hap`; `1b8e5ab` and earlier split the tie). Also a no-op on graphs without overlapping nodes.
 
 With the default settings this pipeline gives the same 2239 events, ids and seeds as the CCLE run, and per
 event the same candidates, edit distances, noisy observations and long-read results (checked on a production

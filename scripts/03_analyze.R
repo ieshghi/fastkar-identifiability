@@ -45,13 +45,16 @@ picks[is.na(assay), assay := paste0('LR ', readL / 1e3, ' kb')]
 picks[, assay := factor(assay, unique(c('LR 100 kb', 'LR 10 Mb', sort(unique(assay)), 'Hi-C')))]
 picks[, assay := droplevels(assay)]
 
-# p_pick: probability the MLE is the truth (ties broken uniformly).
-# chance = 1 / n_cand is p_pick for an assay that sees nothing.
-# unique_walk: the event admits only one karyotype inside the footprint, so
-# p_pick = 1 for every assay (one row per assay instead of n_obs).
+# p_pick: probability the MLE is the truth (ties broken uniformly), counted
+# over haploid solutions: candidates differing only in h1/h2 labels are one
+# solution (n_hap of them; = n_cand on non-allelic graphs).
+# chance = 1 / n_hap is p_pick for an assay that sees nothing.
+# unique_walk: the event admits only one haploid karyotype inside the footprint,
+# so p_pick = 1 for every assay (one row per assay instead of n_obs).
+if (!'n_hap' %in% names(picks)) picks[, n_hap := n_cand] # results from fastKar before the haploid collapse
 summ = picks[, .(p_pick = mean(p_pick), median_rank = median(as.numeric(truth_rank)),
-                 chance = 1 / n_cand[1], n_obs = .N),
-             by = .(event_id, pair, cohort, type, assay, n_cand, unique_walk, event_size, target_width)]
+                 chance = 1 / n_hap[1], n_obs = .N),
+             by = .(event_id, pair, cohort, type, assay, n_cand, n_hap, unique_walk, event_size, target_width)]
 ## Extra columns from the events table (01_events.R with events_file), e.g. a group label.
 if (file.exists(ann_file <- run_file('event_annotations.rds'))) {
     ann = readRDS(ann_file)
