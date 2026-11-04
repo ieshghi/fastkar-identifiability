@@ -35,7 +35,7 @@ graph_cores = 8L
 
 ## -----------------------------------------------------------------------------
 ## Analysis settings, passed unchanged to fastKar:::run_graph_local_identifiability()
-## (identical to the CCLE run in the manuscript, ccle_v3_local_swap)
+## (identical to the CCLE run in the manuscript, ccle_v5_local_nearest)
 ## -----------------------------------------------------------------------------
 
 settings = list(

@@ -26,7 +26,7 @@ pinned = c(
     'mskilab-org/skitools@ba322dc',
     'mskilab-org/gGnome@803c279',
     'mskilab-org/GxG@a8d5827',
-    'ieshghi/fastKar@e8a5a2c')
+    'ieshghi/fastKar@fe6b5b5')
 if ('--flow' %in% commandArgs(trailingOnly = TRUE)) pinned = c(pinned, 'mskilab-org/Flow@63ce03d')
 
 for (r in pinned) {

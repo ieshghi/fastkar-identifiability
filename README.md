@@ -3,8 +3,8 @@
 Pan-cancer **local karyotype identifiability** with [fastKar](https://github.com/ieshghi/fastKar),
 as in Fig. 4 of *The identifiability frontier of cancer karyotype assembly*.
 
-For each rearrangement event in a cohort's genome graphs: draw a random truth karyotype, collect up to
-99 nearby karyotypes (1-3 local swaps at footprint nodes), simulate 100 noisy observations of the
+For each rearrangement event in a cohort's genome graphs: draw a random truth karyotype, collect the
+99 karyotypes nearest to it by edit distance among those within 1-3 local swaps at footprint nodes, simulate 100 noisy observations of the
 truth per assay (Hi-C; long reads at 100 kb and 10 Mb; all at 10x), and record
 **P(MLE = truth)**, the probability that each assay's maximum-likelihood karyotype is the truth
 (ties broken uniformly; chance = 1 / number of candidates). Everything is simulated from the graphs:
@@ -134,8 +134,13 @@ resources/               CCLE per-type runtime/memory
 
 ## Reproducibility
 
-The manuscript's CCLE run (`ccle_v4_local_fwdfix`) used fastKar `1c5197b`. The pinned fastKar (`e8a5a2c`)
-takes chromosome lengths from each graph when it pads the footprint. `1c5197b` took them from the
+The manuscript's CCLE run (`ccle_v5_local_nearest`) used fastKar `fe6b5b5`, the commit pinned here. It keeps
+the 99 candidates nearest to the truth by edit distance (ties broken at random). Earlier commits kept a random
+99 of the swap neighbourhood, which rarely included the nearest (hardest) alternatives and made P(MLE = truth)
+depend on the size of that neighbourhood, so results from them are not comparable.
+
+The earlier run `ccle_v4_local_fwdfix` used fastKar `1c5197b`. Later commits also changed the following.
+fastKar takes chromosome lengths from each graph when it pads the footprint. `1c5197b` took them from the
 `DEFAULT_GENOME` / `DEFAULT_BSGENOME` environment variables, and on a machine with neither set the buffer
 (footprint + max(20%, 10 kb)) was cut at the footprint's right end (nearly every event, a median 15% of the
 target on HMF). The CCLE run had them set. JaBbA graphs round chromosome lengths up to the kb, so events whose
@@ -153,10 +158,10 @@ Such label-only candidates are then collapsed after scoring (`e8a5a2c`): candida
 footprint signature count as one solution with their best NLL, so a label swap of the truth is not a miss on
 any assay (`n_hap`; `1b8e5ab` and earlier split the tie). Also a no-op on graphs without overlapping nodes.
 
-With the default settings this pipeline gives the same 2239 events, ids and seeds as the CCLE run, and per
-event the same candidates, edit distances, noisy observations and long-read results (checked on a production
-checkpoint). Mean P(MLE = truth) there: Hi-C 0.84, 10 Mb 0.73, 100 kb 0.35. Install `ieshghi/fastKar@1c5197b`
-(with `DEFAULT_BSGENOME` set to an hg19 chrom.sizes file) to reproduce it exactly. The earlier
-`ccle_v3_local_swap` run (fastKar `91f1ff3`) scored Hi-C pixels unweighted and dropped the parts of nodes the
+With the default settings this pipeline gives the same 2239 events, ids and seeds as the CCLE runs. At
+`1c5197b` it also gave, per event, the same candidates, edit distances, noisy observations and long-read results
+as `ccle_v4_local_fwdfix` (checked on a production checkpoint; mean P(MLE = truth) there: Hi-C 0.84, 10 Mb 0.73,
+100 kb 0.35). Install `ieshghi/fastKar@1c5197b` (with `DEFAULT_BSGENOME` set to an hg19 chrom.sizes file) to
+reproduce that run exactly. The earlier `ccle_v3_local_swap` run (fastKar `91f1ff3`) scored Hi-C pixels unweighted and dropped the parts of nodes the
 target only partly covers (fixed in `bd9941c` and `1c5197b`). Results depend on `mc_cores` (each event's
 forked sampling walkers draw from L'Ecuyer streams split by core).
