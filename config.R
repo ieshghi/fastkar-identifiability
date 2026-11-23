@@ -52,7 +52,6 @@ settings = list(
     n_walkers = 200,            # local.sampling() chains from the truth
     n_swaps = 3,                # swaps per chain; every visited karyotype is a candidate
     n_obs = 100,                # noisy observations of the truth per assay
-    graph_mode = 'full',
     modalities = c('hic', 'longread'),
     longread_lengths = c(1e5, 1e7),
     depth = 10,

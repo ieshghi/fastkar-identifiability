@@ -72,6 +72,10 @@ settings = readRDS(settings_file)
 options(fastKar.conserve = isTRUE(settings$conserve))
 message('fastKar.conserve = ', getOption('fastKar.conserve'))
 settings$conserve = NULL
+# fastKar no longer has graph_mode (always the full graph); settings saved before then carry graph_mode = 'full'
+if (!is.null(settings$graph_mode) && !identical(settings$graph_mode, 'full'))
+    stop('graph_mode = ', settings$graph_mode, ' is no longer supported by fastKar (full graph only)')
+settings$graph_mode = NULL
 bundle = as.data.table(readRDS(event_bundle))
 if (!nrow(bundle)) stop('event_bundle has zero rows')
 required_cols = c('pair', 'event_id', 'cohort', 'type', 'gg', 'footprint', 'seed')
